@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Интеграция с БД</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  h1 {
+    color: #e2e8f0;
+    font-size: 1.4rem;
+    margin-bottom: 28px;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .layout {
+    display: flex;
+    gap: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+  }
+
+  .panel {
+    background: #1a1d27;
+    border: 1px solid #2d3348;
+    border-radius: 8px;
+    padding: 24px;
+  }
+
+  .form-panel { flex: 0 0 300px; }
+  .table-panel { flex: 1; min-width: 300px; }
+
+  h2 {
+    color: #e2e8f0;
+    font-size: 0.95rem;
+    margin-bottom: 18px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .field { margin-bottom: 14px; }
+
+  label {
+    display: block;
+    font-size: 0.78rem;
+    color: #8892a4;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  input {
+    width: 100%;
+    padding: 9px 12px;
+    background: #0f1117;
+    border: 1px solid #2d3348;
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus { border-color: #4f8ef7; }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 18px; }
+
+  button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-weight: 500;
+  }
+
+  .btn-add  { background: #2563eb; color: #fff; }
+  .btn-add:hover  { background: #3b82f6; }
+  .btn-save { background: #16a34a; color: #fff; display: none; }
+  .btn-save:hover { background: #22c55e; }
+  .btn-cancel { background: #374151; color: #e2e8f0; display: none; }
+  .btn-cancel:hover { background: #4b5563; }
+
+  #form-msg {
+    margin-top: 10px;
+    font-size: 0.82rem;
+    min-height: 18px;
+  }
+  .msg-ok  { color: #4ade80; }
+  .msg-err { color: #f87171; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  thead th {
+    text-align: left;
+    color: #8892a4;
+    padding: 8px 10px;
+    border-bottom: 1px solid #2d3348;
+    font-weight: 500;
+    white-space: nowrap;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+  }
+
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: #1e2235; }
+
+  td {
+    padding: 9px 10px;
+    border-bottom: 1px solid #1e2235;
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  .actions { display: flex; gap: 6px; }
+
+  .btn-edit {
+    padding: 5px 10px;
+    background: #1e3a6e;
+    color: #93c5fd;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    flex: none;
+  }
+  .btn-edit:hover { background: #2563eb; color: #fff; }
+
+  .btn-del {
+    padding: 5px 10px;
+    background: #3b1a1a;
+    color: #fca5a5;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    flex: none;
+  }
+  .btn-del:hover { background: #dc2626; color: #fff; }
+
+  .empty { color: #8892a4; text-align: center; padding: 24px; font-size: 0.88rem; }
+
+  #table-msg {
+    margin-bottom: 12px;
+    font-size: 0.82rem;
+    min-height: 18px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Управление пользователями — SQLite CRUD</h1>
+
+<div class="layout">
+  <div class="panel form-panel">
+    <h2 id="form-title">Добавить запись</h2>
+    <input type="hidden" id="edit-id">
+    <div class="field"><label>Имя *</label><input id="f-name" placeholder="Иван Иванов"></div>
+    <div class="field"><label>Email *</label><input id="f-email" type="email" placeholder="ivan@mail.ru"></div>
+    <div class="field"><label>Возраст</label><input id="f-age" type="number" min="0" max="150" placeholder="25"></div>
+    <div class="field"><label>Город</label><input id="f-city" placeholder="Москва"></div>
+    <div class="btn-row">
+      <button class="btn-add"    id="btn-add">Добавить</button>
+      <button class="btn-save"   id="btn-save">Сохранить</button>
+      <button class="btn-cancel" id="btn-cancel">Отмена</button>
+    </div>
+    <div id="form-msg"></div>
+  </div>
+
+  <div class="panel table-panel">
+    <h2>Записи в базе данных</h2>
+    <div id="table-msg"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Имя</th><th>Email</th><th>Возраст</th><th>Город</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const API = '/users';
+
+const fName   = document.getElementById('f-name');
+const fEmail  = document.getElementById('f-email');
+const fAge    = document.getElementById('f-age');
+const fCity   = document.getElementById('f-city');
+const editId  = document.getElementById('edit-id');
+const formMsg = document.getElementById('form-msg');
+const tableMsg= document.getElementById('table-msg');
+const tbody   = document.getElementById('tbody');
+const btnAdd  = document.getElementById('btn-add');
+const btnSave = document.getElementById('btn-save');
+const btnCancel = document.getElementById('btn-cancel');
+
+function setMsg(el, text, ok) {
+  el.textContent = text;
+  el.className = ok ? 'msg-ok' : 'msg-err';
+}
+
+function clearForm() {
+  fName.value = fEmail.value = fAge.value = fCity.value = editId.value = '';
+  document.getElementById('form-title').textContent = 'Добавить запись';
+  btnAdd.style.display = '';
+  btnSave.style.display = btnCancel.style.display = 'none';
+  formMsg.textContent = '';
+}
+
+async function loadUsers() {
+  try {
+    const res = await fetch(API);
+    const data = await res.json();
+    if (!res.ok) { setMsg(tableMsg, data.error, false); return; }
+    renderTable(data);
+    tableMsg.textContent = '';
+  } catch {
+    setMsg(tableMsg, 'Нет соединения с сервером', false);
+  }
+}
+
+function renderTable(users) {
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Нет записей</td></tr>';
+    return;
+  }
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td>${esc(u.name)}</td>
+      <td>${esc(u.email)}</td>
+      <td>${u.age ?? '—'}</td>
+      <td>${esc(u.city ?? '—')}</td>
+      <td><div class="actions">
+        <button class="btn-edit" data-id="${u.id}">Изм.</button>
+        <button class="btn-del"  data-id="${u.id}">Удал.</button>
+      </div></td>
+    </tr>`).join('');
+
+  tbody.querySelectorAll('.btn-edit').forEach(btn => {
+    const id = Number(btn.dataset.id);
+    const u = users.find(x => x.id === id);
+    btn.addEventListener('click', () => startEdit(u.id, u.name, u.email, u.age, u.city));
+  });
+
+  tbody.querySelectorAll('.btn-del').forEach(btn => {
+    btn.addEventListener('click', () => deleteUser(Number(btn.dataset.id)));
+  });
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+btnAdd.addEventListener('click', async () => {
+  const body = { name: fName.value, email: fEmail.value, age: fAge.value || null, city: fCity.value };
+  try {
+    const res = await fetch(API, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) { setMsg(formMsg, data.error, false); return; }
+    setMsg(formMsg, 'Запись добавлена', true);
+    clearForm();
+    loadUsers();
+  } catch { setMsg(formMsg, 'Ошибка соединения', false); }
+});
+
+function startEdit(id, name, email, age, city) {
+  editId.value = id;
+  fName.value  = name;
+  fEmail.value = email;
+  fAge.value   = age ?? '';
+  fCity.value  = city ?? '';
+  document.getElementById('form-title').textContent = `Редактировать #${id}`;
+  btnAdd.style.display = 'none';
+  btnSave.style.display = btnCancel.style.display = '';
+  formMsg.textContent = '';
+}
+
+btnSave.addEventListener('click', async () => {
+  const id = editId.value;
+  const body = { name: fName.value, email: fEmail.value, age: fAge.value || null, city: fCity.value };
+  try {
+    const res = await fetch(`${API}/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) { setMsg(formMsg, data.error, false); return; }
+    setMsg(formMsg, 'Изменения сохранены', true);
+    clearForm();
+    loadUsers();
+  } catch { setMsg(formMsg, 'Ошибка соединения', false); }
+});
+
+btnCancel.addEventListener('click', clearForm);
+
+async function deleteUser(id) {
+  if (!confirm(`Удалить запись #${id}?`)) return;
+  try {
+    const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) { setMsg(tableMsg, data.error, false); return; }
+    loadUsers();
+  } catch { setMsg(tableMsg, 'Ошибка соединения', false); }
+}
+
+loadUsers();
+</script>
+</body>
+</html>
